@@ -1,36 +1,157 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Breathwork Journey Builder
+
+Build and soundtrack your breathwork journeys.
+
+A simple web app where facilitators can create, structure, and time their breathwork classes — aligning each phase with music and breathing rhythms — all locally, no login or accounts needed.
+
+## Features
+
+### Core Features
+
+1. **Create a Breathwork Class**
+   - Enter class title, theme, and total duration
+   - Add or remove phases (Grounding, Activation, Hold/Rest, Integration, Custom)
+   - Adjust the duration of each phase using sliders
+   - Auto-calculates total time
+
+2. **Spotify Music Connection**
+   - **With Authentication**: Connect your Spotify account to automatically fetch all tracks from playlists
+   - **Without Authentication**: Paste Spotify playlist URLs to get basic info (title, cover image) and manually add tracks
+   - Shows mini embedded Spotify player for preview
+   - Map tracks from playlists to specific phases in your class
+
+3. **Breathing Rhythm Builder**
+   - Select breathing types:
+     - Conscious Connected (continuous)
+     - Box Breathing (4-4-4-4)
+     - 2:1 Ratio (In 4s, Out 8s)
+     - Custom
+   - Adjust sliders for inhale/exhale times and optional holds
+   - Visual rhythm preview with pulsing circle animation
+
+4. **Timeline Overview**
+   - Visual timeline bar with segments for each phase
+   - Different colors for each phase type
+   - Shows linked playlist covers beneath phases
+   - Interactive duration adjustment via drag or sliders
+
+5. **Preview & Save Locally**
+   - Full preview mode with timeline, music sections, and breathing rhythm animation
+   - No login or cloud sync — saves locally in browser storage (localStorage)
+   - Export/Import JSON functionality
+   - Duplicate classes
+
+## Tech Stack
+
+- **Next.js 16** with App Router
+- **TypeScript**
+- **Tailwind CSS**
+- **shadcn/ui** components
+- **Lucide React** icons
+- **localStorage** for data persistence
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd breathcourse
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up Spotify Authentication (Optional but recommended):
+   - Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+   - Create a new app
+   - **For Local Development**: Add redirect URI: `http://127.0.0.1:3000/api/spotify/callback`
+     - ⚠️ **Important**: Spotify no longer allows `localhost` - you must use `127.0.0.1`
+     - HTTP is allowed for loopback addresses (127.0.0.1)
+   - **For Production**: Use HTTPS URL: `https://yourdomain.com/api/spotify/callback`
+   - Copy your Client ID
+   - Create a `.env.local` file in the root directory:
+     ```
+     NEXT_PUBLIC_SPOTIFY_CLIENT_ID=your_client_id_here
+     ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Run the development server:
+```bash
+npm run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+### Build for Production
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+breathcourse/
+├── app/
+│   ├── layout.tsx          # Root layout with dark theme
+│   ├── page.tsx             # Main page with routing logic
+│   └── globals.css          # Global styles
+├── components/
+│   ├── ui/                  # shadcn/ui components
+│   ├── ClassForm.tsx        # Class creation/editing form
+│   ├── ClassList.tsx        # List of saved classes
+│   ├── PhaseEditor.tsx      # Individual phase editor
+│   ├── BreathingRhythmBuilder.tsx  # Breathing rhythm configuration
+│   ├── SpotifyIntegration.tsx      # Spotify playlist integration
+│   ├── Timeline.tsx         # Timeline overview component
+│   └── PreviewMode.tsx      # Preview mode with animations
+├── lib/
+│   ├── storage.ts           # Local storage utilities
+│   └── spotify.ts           # Spotify API integration
+├── types/
+│   └── index.ts             # TypeScript type definitions
+└── README.md
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Usage
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Create a New Class**
+   - Click "Create New Class" on the home page
+   - Enter class title and optional theme
+   - Add phases and configure their durations
+
+2. **Configure Phases**
+   - Select phase type (Grounding, Activation, etc.)
+   - Adjust duration with slider
+   - Set breathing rhythm pattern
+   - Add Spotify playlist/track URL
+
+3. **Preview Session**
+   - Click "Preview Session" to see the full timeline
+   - Watch breathing rhythm animations
+   - See music integration
+
+4. **Save & Manage**
+   - Classes are automatically saved to localStorage
+   - Export classes as JSON
+   - Duplicate or delete classes
+
+## Design
+
+- Dark, studio-like interface (calm, elegant)
+- Tailwind + shadcn components
+- One-screen workflow: left (setup), right (timeline)
+- Clean typography, subtle gradients, minimal distractions
+
+## License
+
+MIT
