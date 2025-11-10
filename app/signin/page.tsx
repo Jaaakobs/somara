@@ -218,9 +218,13 @@ export default function SignInPage() {
           </div>
 
           {/* Title */}
-          <h1 className="text-2xl font-bold text-center mb-2">Welcome to Somara</h1>
+          <h1 className="text-2xl font-bold text-center mb-2">
+            {isSignUp ? "Get started" : "Welcome back"}
+          </h1>
           <p className="text-sm text-muted-foreground text-center mb-8">
-            Please sign in or sign up below.
+            {isSignUp 
+              ? "Create your account to get started with Somara."
+              : "Sign in to continue to your account."}
           </p>
 
           {/* Error Message */}

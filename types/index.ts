@@ -78,6 +78,10 @@ export interface BreathworkPhase {
   tracks?: PhaseTrack[]; // Deprecated - tracks are now stored at class level
 }
 
+export type ClassType = "online" | "physical" | "hybrid";
+
+export type RecurringFrequency = "none" | "daily" | "weekly" | "monthly";
+
 export interface BreathworkClass {
   id: string;
   theme?: string;
@@ -86,10 +90,17 @@ export interface BreathworkClass {
   phases: BreathworkPhase[];
   spotifyPlaylist?: SpotifyPlaylist;
   tracks?: PhaseTrack[]; // Tracks for the entire timeline (absolute positions)
-  // More options
-  isOnline?: boolean;
+  // Class details
+  classType?: ClassType;
   location?: string;
-  time?: string;
+  date?: string; // ISO date string (YYYY-MM-DD)
+  time?: string; // Time string (HH:MM)
+  isRecurring?: boolean;
+  recurringFrequency?: RecurringFrequency;
+  recurringEndDate?: string; // ISO date string (YYYY-MM-DD)
+  capacity?: number; // Maximum number of participants
+  price?: number; // Price in currency
+  instructorNotes?: string; // Private notes for instructor
   createdAt: number;
   updatedAt: number;
 }

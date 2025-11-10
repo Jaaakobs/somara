@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { useTimelineStore } from "@/lib/store";
-import { BreathworkClass, PhaseType } from "@/types";
-import { Plus, Trash2, Waves, GripVertical, ChevronDown, ChevronUp, Music, X } from "lucide-react";
+import { BreathworkClass, PhaseType, ClassType } from "@/types";
+import { Plus, Trash2, Waves, GripVertical, ChevronDown, ChevronUp, Music, X, Monitor, MapPin, Users } from "lucide-react";
 import { BreathingRhythmBuilder } from "./BreathingRhythmBuilder";
 import { getSpotifyEmbedUrl } from "@/lib/spotify";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,7 +17,6 @@ import { SortablePhaseItem } from "./SortablePhaseItem";
 import { TrackTimeline } from "./TrackTimeline";
 import { SpotifyPlaylistDialog } from "./SpotifyPlaylistDialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   DndContext,
   closestCenter,
@@ -61,9 +60,11 @@ export function SimpleClassForm({ initialClass, onSave, onCancel }: SimpleClassF
   const [theme, setTheme] = useState(initialClass?.theme || "");
   const [description, setDescription] = useState(initialClass?.description || "");
   const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [isOnline, setIsOnline] = useState(initialClass?.isOnline || false);
+  const [classType, setClassType] = useState<ClassType | undefined>(initialClass?.classType);
   const [location, setLocation] = useState(initialClass?.location || "");
+  const [date, setDate] = useState(initialClass?.date || "");
   const [time, setTime] = useState(initialClass?.time || "");
+  const [capacity, setCapacity] = useState(initialClass?.capacity?.toString() || "");
   const [selectedPhaseType, setSelectedPhaseType] = useState<string>("");
 
   const sensors = useSensors(
@@ -78,9 +79,11 @@ export function SimpleClassForm({ initialClass, onSave, onCancel }: SimpleClassF
       setCurrentClass(initialClass);
       setTheme(initialClass.theme || "");
       setDescription(initialClass.description || "");
-      setIsOnline(initialClass.isOnline || false);
+      setClassType(initialClass.classType);
       setLocation(initialClass.location || "");
+      setDate(initialClass.date || "");
       setTime(initialClass.time || "");
+      setCapacity(initialClass.capacity?.toString() || "");
     } else {
       const newClass: BreathworkClass = {
         id: crypto.randomUUID(),
@@ -102,9 +105,11 @@ export function SimpleClassForm({ initialClass, onSave, onCancel }: SimpleClassF
       id: initialClass?.id || currentClass.id,
       theme: theme.trim() || undefined,
       description: description.trim() || undefined,
-      isOnline: isOnline || undefined,
+      classType: classType,
       location: location.trim() || undefined,
+      date: date.trim() || undefined,
       time: time.trim() || undefined,
+      capacity: capacity ? parseInt(capacity, 10) : undefined,
       createdAt: initialClass?.createdAt || currentClass.createdAt,
       updatedAt: Date.now(),
     };
@@ -172,18 +177,35 @@ export function SimpleClassForm({ initialClass, onSave, onCancel }: SimpleClassF
             
             {showMoreOptions && (
               <div className="space-y-4 pt-2 border-t">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is-online"
-                    checked={isOnline}
-                    onCheckedChange={(checked) => setIsOnline(checked === true)}
-                  />
-                  <Label htmlFor="is-online" className="cursor-pointer">
-                    Online Class
-                  </Label>
+                {/* Class Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="class-type">Class Type</Label>
+                  <Select
+                    value={classType || ""}
+                    onValueChange={(value) => setClassType(value as ClassType)}
+                  >
+                    <SelectTrigger id="class-type" className="w-full">
+                      <SelectValue placeholder="Select class type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="online" className="flex items-center gap-2">
+                        <Monitor className="h-4 w-4" />
+                        <span>Online</span>
+                      </SelectItem>
+                      <SelectItem value="physical" className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>Physical</span>
+                      </SelectItem>
+                      <SelectItem value="hybrid" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span>Hybrid</span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                
-                {!isOnline && (
+
+                {/* Location - show for physical and hybrid */}
+                {(classType === "physical" || classType === "hybrid") && (
                   <div className="space-y-2">
                     <Label htmlFor="location">Location</Label>
                     <Input
@@ -194,16 +216,48 @@ export function SimpleClassForm({ initialClass, onSave, onCancel }: SimpleClassF
                     />
                   </div>
                 )}
-                
+
+                {/* Date */}
+                <div className="space-y-2">
+                  <Label htmlFor="date">Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Time */}
                 <div className="space-y-2">
                   <Label htmlFor="time">Time</Label>
                   <Input
                     id="time"
+                    type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    placeholder="e.g., 10:00 AM - 11:00 AM"
+                    className="w-full"
                   />
                 </div>
+
+                {/* Capacity */}
+                <div className="space-y-2">
+                  <Label htmlFor="capacity" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span>Capacity</span>
+                  </Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    min="1"
+                    value={capacity}
+                    onChange={(e) => setCapacity(e.target.value)}
+                    placeholder="Maximum number of participants"
+                    className="w-full"
+                  />
+                </div>
+
               </div>
             )}
           </div>
