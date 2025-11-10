@@ -338,12 +338,14 @@ export function ClassList({ onSelectClass, onCreateNew, onPreviewClass }: ClassL
                       <span className="font-medium truncate">{clazz.spotifyPlaylist.name}</span>
                     </div>
                   )}
-                  {clazz.isOnline !== undefined && (
+                  {clazz.classType && (
                     <div className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground">
-                        {clazz.isOnline ? "Online Class" : "In-Person Class"}
+                      <span className="text-muted-foreground capitalize">
+                        {clazz.classType === "online" && "Online Class"}
+                        {clazz.classType === "physical" && "Physical Class"}
+                        {clazz.classType === "hybrid" && "Hybrid Class"}
                       </span>
-                      {clazz.location && !clazz.isOnline && (
+                      {clazz.location && (clazz.classType === "physical" || clazz.classType === "hybrid") && (
                         <span className="text-muted-foreground">• {clazz.location}</span>
                       )}
                     </div>
