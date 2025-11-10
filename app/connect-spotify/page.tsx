@@ -64,20 +64,13 @@ export default function ConnectSpotifyPage() {
                   if (userResponse.ok) {
                     const spotifyUser = await userResponse.json();
                     
-                    // Update Supabase user metadata with Spotify display name
-                    if (spotifyUser.displayName) {
-                      const { error: updateError } = await supabase.auth.updateUser({
-                        data: {
-                          full_name: spotifyUser.displayName,
-                          display_name: spotifyUser.displayName,
-                        },
-                      });
-
-                      if (updateError) {
-                        console.error("Error updating user metadata:", updateError);
-                        // Don't fail the connection if metadata update fails
-                      }
-                    }
+                    // Update profile table with Spotify integration data
+                    const { updateProfileWithSpotify } = await import("@/lib/profiles");
+                    await updateProfileWithSpotify(
+                      spotifyUser.id,
+                      spotifyUser.displayName,
+                      spotifyUser.imageUrl
+                    );
                   }
                 }
               } catch (err) {
@@ -102,8 +95,9 @@ export default function ConnectSpotifyPage() {
           return;
         }
 
-        // Check if Spotify is already connected
-        const spotifyConnected = await isAuthenticated();
+        // Check if Spotify is already connected (check profiles table first, then localStorage)
+        const { isSpotifyConnected } = await import("@/lib/profiles");
+        const spotifyConnected = await isSpotifyConnected() || await isAuthenticated();
         if (spotifyConnected) {
           // Already connected, redirect to home
           router.push("/home");

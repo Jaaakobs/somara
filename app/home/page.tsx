@@ -26,9 +26,10 @@ export default function HomePage() {
         return
       } else if (session) {
         hasSession = true
-        // Check if Spotify is connected
+        // Check if Spotify is connected (check profiles table first, then localStorage)
+        const { isSpotifyConnected } = await import('@/lib/profiles')
         const { isAuthenticated } = await import('@/lib/spotify-auth')
-        const spotifyConnected = await isAuthenticated()
+        const spotifyConnected = await isSpotifyConnected() || await isAuthenticated()
         if (!spotifyConnected) {
           // Spotify not connected, redirect to connection page
           router.push('/connect-spotify')
@@ -45,9 +46,10 @@ export default function HomePage() {
         
         if (session) {
           hasSession = true
-          // Check if Spotify is connected
+          // Check if Spotify is connected (check profiles table first, then localStorage)
+          const { isSpotifyConnected } = await import('@/lib/profiles')
           const { isAuthenticated } = await import('@/lib/spotify-auth')
-          const spotifyConnected = await isAuthenticated()
+          const spotifyConnected = await isSpotifyConnected() || await isAuthenticated()
           if (!spotifyConnected) {
             // Spotify not connected, redirect to connection page
             router.push('/connect-spotify')

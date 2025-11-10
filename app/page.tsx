@@ -26,9 +26,10 @@ export default function Home() {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session) {
-          // Check if Spotify is connected
+          // Check if Spotify is connected (check profiles table first, then localStorage)
+          const { isSpotifyConnected } = await import('@/lib/profiles')
           const { isAuthenticated } = await import('@/lib/spotify-auth')
-          const spotifyConnected = await isAuthenticated()
+          const spotifyConnected = await isSpotifyConnected() || await isAuthenticated()
           
           if (!spotifyConnected) {
             // Spotify not connected, redirect to connection page
@@ -52,9 +53,10 @@ export default function Home() {
     const supabase = createClient()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        // Check if Spotify is connected
+        // Check if Spotify is connected (check profiles table first, then localStorage)
+        const { isSpotifyConnected } = await import('@/lib/profiles')
         const { isAuthenticated } = await import('@/lib/spotify-auth')
-        const spotifyConnected = await isAuthenticated()
+        const spotifyConnected = await isSpotifyConnected() || await isAuthenticated()
         
         if (!spotifyConnected) {
           // Spotify not connected, redirect to connection page
