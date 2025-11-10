@@ -148,7 +148,7 @@ export default function ResetPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                disabled={isLoading || !code}
+                disabled={isLoading}
                 className="w-full"
                 minLength={6}
               />
@@ -166,7 +166,7 @@ export default function ResetPasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                disabled={isLoading || !code}
+                disabled={isLoading}
                 className="w-full"
                 minLength={6}
               />
@@ -176,7 +176,7 @@ export default function ResetPasswordPage() {
             <Button
               type="submit"
               className="w-full bg-foreground text-background hover:bg-foreground/90"
-              disabled={isLoading || !code}
+              disabled={isLoading}
             >
               {isLoading ? "Resetting..." : "Reset Password"}
             </Button>
