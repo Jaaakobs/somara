@@ -16,11 +16,12 @@ export default function EditClassPage() {
   const [currentClass, setCurrentClass] = useState<BreathworkClass | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check authentication status on mount
+  // Check authentication status on mount and listen for sign-out
   useEffect(() => {
+    const supabase = createClient()
+    
     const checkAuth = async () => {
       try {
-        const supabase = createClient()
         const { data: { session } } = await supabase.auth.getSession()
         
         if (!session) {
@@ -35,7 +36,18 @@ export default function EditClassPage() {
       }
     }
 
+    // Listen for auth state changes (especially sign-out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/')
+      }
+    })
+
     checkAuth()
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [router])
 
   // Load class data

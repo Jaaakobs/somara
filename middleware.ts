@@ -35,10 +35,21 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Refresh session if expired - required for Server Components
-  // https://supabase.com/docs/guides/auth/server-side/nextjs
-  if (!user && request.nextUrl.pathname.startsWith('/auth/callback')) {
-    // Don't redirect if we're already on the callback route
+  // Protected routes that require authentication
+  const protectedPaths = ['/home', '/connect-spotify']
+  const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+  
+  // If accessing protected route without user, redirect to landing page
+  if (isProtectedPath && !user) {
+    const redirectUrl = new URL('/', request.url)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // Allow callback and reset-password routes even without user (for OAuth and password reset flows)
+  if (!user && (
+    request.nextUrl.pathname.startsWith('/auth/callback') ||
+    request.nextUrl.pathname.startsWith('/reset-password')
+  )) {
     return supabaseResponse
   }
 

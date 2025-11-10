@@ -146,6 +146,55 @@ export async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+// Handle Spotify OAuth callback
+export async function handleSpotifyCallback(code: string): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  
+  try {
+    const codeVerifier = localStorage.getItem("spotify_code_verifier");
+    if (!codeVerifier) {
+      console.error("Code verifier not found");
+      return false;
+    }
+
+    // Use 127.0.0.1 instead of localhost (Spotify requirement)
+    let redirectUri = `${window.location.origin}/api/spotify/callback`;
+    if (window.location.hostname === "localhost") {
+      redirectUri = `http://127.0.0.1:${window.location.port}/api/spotify/callback`;
+    }
+
+    const response = await fetch("/api/spotify/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        code,
+        codeVerifier,
+        redirectUri,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to exchange token");
+      return false;
+    }
+
+    const tokenData = await response.json();
+    
+    // Store tokens
+    storeAccessToken(tokenData.access_token, tokenData.expires_in, tokenData.refresh_token);
+    
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent("spotify-auth-success"));
+    
+    return true;
+  } catch (error) {
+    console.error("Spotify callback error:", error);
+    return false;
+  }
+}
+
 export async function getStoredAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   

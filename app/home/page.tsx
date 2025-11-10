@@ -11,7 +11,7 @@ export default function HomePage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check authentication status on mount
+  // Check authentication status and Spotify connection on mount
   useEffect(() => {
     const supabase = createClient()
     let hasSession = false
@@ -20,27 +20,20 @@ export default function HomePage() {
 
     // Listen for auth state changes FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change on /home:', event, session ? 'has session' : 'no session')
-      
-      if (event === 'SIGNED_IN' && session) {
-        hasSession = true
-        console.log('User signed in, session:', session.user?.email)
-        const signedViaSpotify = session.provider_token && 
-          session.user?.identities?.some(identity => identity.provider === 'spotify');
-        if (signedViaSpotify) {
-          try {
-            const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
-            await syncSpotifyTokensFromSupabase()
-          } catch (error) {
-            console.error('Error syncing Spotify tokens:', error)
-          }
-        }
-        setIsCheckingAuth(false)
-      } else if (event === 'SIGNED_OUT' && !session) {
+      if (event === 'SIGNED_OUT' || !session) {
         hasSession = false
         router.push('/')
+        return
       } else if (session) {
         hasSession = true
+        // Check if Spotify is connected
+        const { isAuthenticated } = await import('@/lib/spotify-auth')
+        const spotifyConnected = await isAuthenticated()
+        if (!spotifyConnected) {
+          // Spotify not connected, redirect to connection page
+          router.push('/connect-spotify')
+          return
+        }
         setIsCheckingAuth(false)
       }
     })
@@ -50,32 +43,25 @@ export default function HomePage() {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
         
-        console.log('Session check on /home:', session ? 'has session' : 'no session', 'error:', error)
-        
         if (session) {
           hasSession = true
-          console.log('Session found, user:', session.user?.email)
-          const signedViaSpotify = session.provider_token && 
-            session.user?.identities?.some(identity => identity.provider === 'spotify');
-          if (signedViaSpotify) {
-            try {
-              const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
-              await syncSpotifyTokensFromSupabase()
-            } catch (error) {
-              console.error('Error syncing Spotify tokens:', error)
-            }
+          // Check if Spotify is connected
+          const { isAuthenticated } = await import('@/lib/spotify-auth')
+          const spotifyConnected = await isAuthenticated()
+          if (!spotifyConnected) {
+            // Spotify not connected, redirect to connection page
+            router.push('/connect-spotify')
+            return
           }
           setIsCheckingAuth(false)
         } else if (!hasSession && checkCount < maxChecks) {
           // Retry checking for session (cookies might not be set yet)
           checkCount++
-          console.log(`No session found, retrying... (${checkCount}/${maxChecks})`)
           setTimeout(() => {
             checkAuth()
           }, 500)
         } else if (!hasSession) {
           // After max retries, redirect to landing page
-          console.log('No session after retries, redirecting to landing page')
           router.push('/')
         }
       } catch (err) {

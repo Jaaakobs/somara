@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Redirect to home page with code - we'll handle token exchange on client side
+  // Redirect to connect-spotify page with code - we'll handle token exchange on client side
   return NextResponse.redirect(
-    new URL(`/?spotify_code=${code}`, request.url)
+    new URL(`/connect-spotify?spotify_code=${code}`, request.url)
   );
 }
 

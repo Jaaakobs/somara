@@ -26,18 +26,16 @@ export default function Home() {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session) {
-          const signedViaSpotify = session.provider_token && 
-            session.user?.identities?.some(identity => identity.provider === 'spotify');
-          if (signedViaSpotify) {
-            try {
-              const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
-              await syncSpotifyTokensFromSupabase()
-            } catch (error) {
-              console.error('Error syncing Spotify tokens:', error)
-            }
-          }
+          // Check if Spotify is connected
+          const { isAuthenticated } = await import('@/lib/spotify-auth')
+          const spotifyConnected = await isAuthenticated()
           
-          if (window.location.pathname !== '/home') {
+          if (!spotifyConnected) {
+            // Spotify not connected, redirect to connection page
+            if (window.location.pathname !== '/connect-spotify') {
+              router.push('/connect-spotify')
+            }
+          } else if (window.location.pathname !== '/home') {
             router.push('/home')
           }
         }
@@ -54,17 +52,16 @@ export default function Home() {
     const supabase = createClient()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        const signedViaSpotify = session.provider_token && 
-          session.user?.identities?.some(identity => identity.provider === 'spotify');
-        if (signedViaSpotify) {
-          try {
-            const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
-            await syncSpotifyTokensFromSupabase()
-          } catch (error) {
-            console.error('Error syncing Spotify tokens:', error)
+        // Check if Spotify is connected
+        const { isAuthenticated } = await import('@/lib/spotify-auth')
+        const spotifyConnected = await isAuthenticated()
+        
+        if (!spotifyConnected) {
+          // Spotify not connected, redirect to connection page
+          if (window.location.pathname !== '/connect-spotify') {
+            router.push('/connect-spotify')
           }
-        }
-        if (window.location.pathname !== '/home') {
+        } else if (window.location.pathname !== '/home') {
           router.push('/home')
         }
       }
