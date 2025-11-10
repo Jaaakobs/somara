@@ -35,6 +35,10 @@ export async function syncSpotifyTokensFromSupabase(): Promise<boolean> {
     
     // Extract tokens from Supabase session
     const accessToken = session.provider_token;
+    if (!accessToken) {
+      return false;
+    }
+    
     const refreshToken = session.provider_refresh_token || null;
     
     // Calculate expiration (default to 1 hour if not provided)
@@ -160,7 +164,7 @@ export async function getStoredAccessToken(): Promise<string | null> {
         const { data: { session } } = await supabase.auth.getSession();
         const signedViaSpotify = session?.provider_token && 
           session.user?.identities?.some(identity => identity.provider === 'spotify');
-        if (signedViaSpotify) {
+        if (signedViaSpotify && session.provider_token) {
           return session.provider_token;
         }
       }
@@ -187,7 +191,7 @@ export async function getStoredAccessToken(): Promise<string | null> {
         const { data: { session } } = await supabase.auth.getSession();
         const signedViaSpotify = session?.provider_token && 
           session.user?.identities?.some(identity => identity.provider === 'spotify');
-        if (signedViaSpotify) {
+        if (signedViaSpotify && session.provider_token) {
           // Sync the token to localStorage
           await syncSpotifyTokensFromSupabase();
           return session.provider_token;
