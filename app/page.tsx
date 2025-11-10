@@ -25,31 +25,84 @@ export default function Home() {
   // Check authentication status on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClient()
-      const { data: { session }, error } = await supabase.auth.getSession()
-      
-      console.log('Auth check - Session:', session ? 'exists' : 'none', 'Error:', error)
-      
-      if (session) {
-        console.log('User authenticated, redirecting to app')
-        setIsAuthenticated(true)
-        setView("list")
-      } else {
-        console.log('No session, showing landing page')
+      try {
+        const supabase = createClient()
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        console.log('Auth check - Session:', session ? 'exists' : 'none', 'Error:', error)
+        
+        if (error) {
+          console.error('Error getting session:', error)
+        }
+        
+        if (session) {
+          console.log('User authenticated, redirecting to app')
+          console.log('Session user:', session.user?.email)
+          
+          // Sync Spotify tokens from Supabase if user signed in via Spotify OAuth
+          if (session.provider_token && session.provider === 'spotify') {
+            try {
+              const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
+              await syncSpotifyTokensFromSupabase()
+              console.log('Synced Spotify tokens from Supabase')
+            } catch (error) {
+              console.error('Error syncing Spotify tokens:', error)
+            }
+          }
+          
+          setIsAuthenticated(true)
+          setView("list")
+        } else {
+          console.log('No session, showing landing page')
+          setIsAuthenticated(false)
+          setView("landing")
+        }
+      } catch (err) {
+        console.error('Exception during auth check:', err)
         setIsAuthenticated(false)
         setView("landing")
+      } finally {
+        setIsCheckingAuth(false)
       }
-      setIsCheckingAuth(false)
     }
 
     checkAuth()
 
     // Listen for auth state changes
     const supabase = createClient()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session ? 'session exists' : 'no session')
       
-      if (session) {
+      // Sync Spotify tokens from Supabase if user signed in via Spotify OAuth
+      if (session?.provider_token && session.provider === 'spotify') {
+        try {
+          const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
+          await syncSpotifyTokensFromSupabase()
+          console.log('Synced Spotify tokens from Supabase')
+        } catch (error) {
+          console.error('Error syncing Spotify tokens:', error)
+        }
+      }
+      
+      // Handle specific events
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session) {
+          console.log('Auth state change - User authenticated, redirecting to app')
+          console.log('Session user:', session.user?.email)
+          setIsAuthenticated(true)
+          setView("list")
+        }
+      } else if (event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
+        if (session) {
+          console.log('Auth state change - User still has session after SIGNED_OUT event')
+          setIsAuthenticated(true)
+          setView("list")
+        } else {
+          console.log('Auth state change - No session, showing landing page')
+          setIsAuthenticated(false)
+          setView("landing")
+        }
+      } else if (session) {
         console.log('Auth state change - User authenticated, redirecting to app')
         setIsAuthenticated(true)
         setView("list")

@@ -45,10 +45,26 @@ export function ClassList({ onSelectClass, onCreateNew, onPreviewClass }: ClassL
   // Check authentication status and fetch user profile for avatar
   useEffect(() => {
     const checkAuthAndFetchProfile = async () => {
-      const authenticated = await isAuthenticated();
-      setIsSpotifyAuthenticated(authenticated);
+      // Check if user signed up via Spotify OAuth (they're already connected)
+      let signedUpViaSpotify = false;
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session.provider === 'spotify') {
+          signedUpViaSpotify = true;
+          // Sync tokens from Supabase
+          const { syncSpotifyTokensFromSupabase } = await import("@/lib/spotify-auth");
+          await syncSpotifyTokensFromSupabase();
+        }
+      } catch (error) {
+        console.error("Error checking Supabase Spotify auth:", error);
+      }
       
-      if (authenticated) {
+      const authenticated = await isAuthenticated();
+      setIsSpotifyAuthenticated(authenticated || signedUpViaSpotify);
+      
+      if (authenticated || signedUpViaSpotify) {
         try {
           const accessToken = await getStoredAccessToken();
           if (accessToken) {
@@ -255,7 +271,7 @@ export function ClassList({ onSelectClass, onCreateNew, onPreviewClass }: ClassL
         <UserProfile onClose={() => setProfileDialogOpen(false)} />
       )}
 
-      {/* Spotify Not Authenticated Alert */}
+      {/* Spotify Not Authenticated Alert - Only show if user signed up via email (not Spotify OAuth) */}
       {!isSpotifyAuthenticated && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

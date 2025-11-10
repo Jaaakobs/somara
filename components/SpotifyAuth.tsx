@@ -21,6 +21,25 @@ export function SpotifyAuth({ onAuthChange }: SpotifyAuthProps) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // First check if user signed in via Supabase Spotify OAuth
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.provider_token && session.provider === 'spotify') {
+          // Sync tokens from Supabase
+          const { syncSpotifyTokensFromSupabase } = await import("@/lib/spotify-auth");
+          await syncSpotifyTokensFromSupabase();
+          setAuthenticated(true);
+          onAuthChange?.(true);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking Supabase Spotify auth:", error);
+      }
+      
+      // Fallback to checking localStorage
       const authStatus = await isAuthenticated();
       setAuthenticated(authStatus);
       onAuthChange?.(authStatus);

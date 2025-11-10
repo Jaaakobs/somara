@@ -69,9 +69,22 @@ export async function GET(request: NextRequest) {
 
         // Create redirect response with all cookies from the response object
         const redirectResponse = NextResponse.redirect(redirectUrl)
+        
+        // Copy all cookies from the response, ensuring proper settings for production
         response.cookies.getAll().forEach((cookie) => {
-          redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+          redirectResponse.cookies.set(cookie.name, cookie.value, {
+            ...cookie,
+            httpOnly: cookie.httpOnly ?? true,
+            secure: !isLocalEnv, // Use secure cookies in production
+            sameSite: 'lax' as const,
+            path: '/',
+          })
         })
+        
+        // Also ensure session cookies are properly set
+        if (data.session) {
+          console.log('Session created successfully, redirecting to:', redirectUrl)
+        }
         
         return redirectResponse
       }
@@ -95,7 +108,13 @@ export async function GET(request: NextRequest) {
 
           const redirectResponse = NextResponse.redirect(redirectUrl)
           response.cookies.getAll().forEach((cookie) => {
-            redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+            redirectResponse.cookies.set(cookie.name, cookie.value, {
+              ...cookie,
+              httpOnly: cookie.httpOnly ?? true,
+              secure: !isLocalEnv,
+              sameSite: 'lax' as const,
+              path: '/',
+            })
           })
           
           return redirectResponse
@@ -124,7 +143,13 @@ export async function GET(request: NextRequest) {
 
           const redirectResponse = NextResponse.redirect(redirectUrl)
           response.cookies.getAll().forEach((cookie) => {
-            redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+            redirectResponse.cookies.set(cookie.name, cookie.value, {
+              ...cookie,
+              httpOnly: cookie.httpOnly ?? true,
+              secure: !isLocalEnv,
+              sameSite: 'lax' as const,
+              path: '/',
+            })
           })
           
           return redirectResponse
@@ -138,6 +163,9 @@ export async function GET(request: NextRequest) {
           status: error.status,
           name: error.name,
         })
+        
+        // Log the full error for debugging
+        console.error('Full error object:', JSON.stringify(error, null, 2))
       }
     } catch (err) {
       console.error('Exception during code exchange:', err)

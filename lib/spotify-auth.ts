@@ -6,6 +6,50 @@
 
 const SPOTIFY_CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || "";
 
+// Helper to get Supabase client (only in browser)
+async function getSupabaseClient() {
+  if (typeof window === "undefined") return null;
+  try {
+    const { createClient } = await import("@/lib/supabase/client");
+    return createClient();
+  } catch {
+    return null;
+  }
+}
+
+// Sync Spotify tokens from Supabase provider to localStorage
+export async function syncSpotifyTokensFromSupabase(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  
+  try {
+    const supabase = await getSupabaseClient();
+    if (!supabase) return false;
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.provider_token || session.provider !== 'spotify') {
+      return false;
+    }
+    
+    // Extract tokens from Supabase session
+    const accessToken = session.provider_token;
+    const refreshToken = session.provider_refresh_token || null;
+    
+    // Calculate expiration (default to 1 hour if not provided)
+    const expiresIn = session.expires_at 
+      ? Math.max(0, session.expires_at - Math.floor(Date.now() / 1000))
+      : 3600;
+    
+    // Store in localStorage for app use
+    storeAccessToken(accessToken, expiresIn, refreshToken || undefined);
+    
+    return true;
+  } catch (error) {
+    console.error("Error syncing Spotify tokens from Supabase:", error);
+    return false;
+  }
+}
+
 // Get redirect URI - use 127.0.0.1 for localhost, otherwise use the origin
 function getRedirectUri(): string {
   if (typeof window === "undefined") return "";
@@ -98,10 +142,29 @@ export async function refreshAccessToken(): Promise<string | null> {
 
 export async function getStoredAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
+  
+  // First, try to sync tokens from Supabase if user signed in via Spotify OAuth
+  await syncSpotifyTokensFromSupabase();
+  
+  // Check localStorage for token
   const token = localStorage.getItem("spotify_access_token");
   const expiresAt = localStorage.getItem("spotify_token_expires_at");
   
-  if (!token || !expiresAt) return null;
+  if (!token || !expiresAt) {
+    // If no token in localStorage, check Supabase provider token directly
+    try {
+      const supabase = await getSupabaseClient();
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session.provider === 'spotify') {
+          return session.provider_token;
+        }
+      }
+    } catch (error) {
+      console.error("Error getting Supabase provider token:", error);
+    }
+    return null;
+  }
   
   // Check if token is expired or will expire in the next 5 minutes
   const expirationTime = parseInt(expiresAt);
@@ -110,11 +173,30 @@ export async function getStoredAccessToken(): Promise<string | null> {
   if (Date.now() > expirationTime) {
     // Token is expired, try to refresh
     console.log("Token expired, attempting to refresh...");
-    return await refreshAccessToken();
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return refreshed;
+    
+    // If refresh failed, try to get from Supabase
+    try {
+      const supabase = await getSupabaseClient();
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session.provider === 'spotify') {
+          // Sync the token to localStorage
+          await syncSpotifyTokensFromSupabase();
+          return session.provider_token;
+        }
+      }
+    } catch (error) {
+      console.error("Error getting Supabase provider token:", error);
+    }
+    
+    return null;
   } else if (fiveMinutesFromNow > expirationTime) {
     // Token will expire soon, refresh proactively
     console.log("Token expiring soon, refreshing proactively...");
-    return await refreshAccessToken();
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return refreshed;
   }
   
   return token;
@@ -142,6 +224,24 @@ export function clearSpotifyAuth(): void {
 }
 
 export async function isAuthenticated(): Promise<boolean> {
+  // Check Supabase provider token first
+  if (typeof window !== "undefined") {
+    try {
+      const supabase = await getSupabaseClient();
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session.provider === 'spotify') {
+          // Sync to localStorage
+          await syncSpotifyTokensFromSupabase();
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking Supabase Spotify auth:", error);
+    }
+  }
+  
+  // Fallback to localStorage check
   const token = await getStoredAccessToken();
   return token !== null;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,6 +15,7 @@ import { getStoredAccessToken, isAuthenticated, clearSpotifyAuth, getSpotifyAuth
 import { User, Mail, Globe, Crown, Users, Music, LogOut, CheckCircle2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SpotifyAuth } from "./SpotifyAuth";
+import { createClient } from "@/lib/supabase/client";
 
 interface SpotifyUser {
   id: string;
@@ -30,11 +32,15 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ onClose }: UserProfileProps = {}) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(true);
   const [user, setUser] = useState<SpotifyUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
+  const [supabaseUser, setSupabaseUser] = useState<any>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [signedUpViaSpotify, setSignedUpViaSpotify] = useState(false);
 
   const fetchUserProfile = async () => {
     setIsLoading(true);
@@ -76,10 +82,41 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const authStatus = await isAuthenticated();
-      setAuthenticated(authStatus);
-      if (authStatus && isOpen && !user) {
-        fetchUserProfile();
+      // Check Supabase auth first
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setSupabaseUser(session.user);
+        
+        // Check if user signed up via Spotify OAuth
+        const signedViaSpotify = session.provider === 'spotify' && session.provider_token;
+        setSignedUpViaSpotify(signedViaSpotify);
+        
+        // If user signed in via Spotify OAuth, sync tokens and fetch Spotify profile
+        if (signedViaSpotify) {
+          try {
+            const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth');
+            await syncSpotifyTokensFromSupabase();
+            // Fetch Spotify profile since they're already connected
+            const authStatus = await isAuthenticated();
+            setAuthenticated(authStatus);
+            if (authStatus && isOpen && !user) {
+              fetchUserProfile();
+            }
+          } catch (error) {
+            console.error('Error syncing Spotify tokens:', error);
+          }
+        } else {
+          // User signed up via email, check if they've connected Spotify separately
+          const authStatus = await isAuthenticated();
+          setAuthenticated(authStatus);
+          if (authStatus && isOpen && !user) {
+            fetchUserProfile();
+          }
+        }
+      } else {
+        setSupabaseUser(null);
+        setSignedUpViaSpotify(false);
       }
     };
     checkAuth();
@@ -107,6 +144,40 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
     }
   };
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      const supabase = createClient();
+      
+      // Sign out from Supabase
+      const { error: signOutError } = await supabase.auth.signOut();
+      
+      if (signOutError) {
+        console.error('Error signing out:', signOutError);
+        setError('Failed to sign out. Please try again.');
+        setIsLoggingOut(false);
+        return;
+      }
+      
+      // Clear Spotify auth as well
+      clearSpotifyAuth();
+      
+      // Close the dialog
+      setIsOpen(false);
+      if (onClose) {
+        onClose();
+      }
+      
+      // Redirect to landing page
+      router.push('/');
+      router.refresh();
+    } catch (err) {
+      console.error('Error during logout:', err);
+      setError('An error occurred during logout. Please try again.');
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent className="max-w-md">
@@ -116,17 +187,19 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
           </DialogHeader>
 
           <div className="space-y-4">
-            {authenticated ? (
+            {/* Unified Profile - Show Spotify info if available, otherwise Supabase info */}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-sm text-muted-foreground">Loading profile...</p>
+              </div>
+            ) : error ? (
+              <div className="p-4">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            ) : (
               <>
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <p className="text-sm text-muted-foreground">Loading profile...</p>
-                  </div>
-                ) : error ? (
-                  <div className="p-4">
-                    <p className="text-sm text-destructive">{error}</p>
-                  </div>
-                ) : user ? (
+                {/* If user has Spotify profile (signed up via Spotify or connected), show that */}
+                {user ? (
                   <div className="flex flex-col items-center text-center space-y-4">
                     <Avatar className="h-20 w-20">
                       <AvatarImage src={user.imageUrl} alt={user.displayName} />
@@ -168,21 +241,75 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
                       </div>
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  /* Fallback to Supabase user info if no Spotify profile */
+                  supabaseUser && (
+                    <div className="flex flex-col items-center text-center space-y-4">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={supabaseUser.user_metadata?.avatar_url} alt={supabaseUser.email} />
+                        <AvatarFallback className="text-lg">
+                          {supabaseUser.email?.charAt(0).toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="space-y-1">
+                        <h3 className="text-xl font-semibold">
+                          {supabaseUser.user_metadata?.full_name || supabaseUser.email?.split('@')[0] || 'User'}
+                        </h3>
+                        {supabaseUser.email && (
+                          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                            <Mail className="h-3 w-3" />
+                            <span>{supabaseUser.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
               </>
-            ) : null}
+            )}
 
-            {/* Spotify Connection - Compact */}
-            <div className="pt-4 border-t">
-              <SpotifyAuth onAuthChange={(auth) => {
-                setAuthenticated(auth);
-                if (auth && isOpen) {
-                  fetchUserProfile();
-                } else {
-                  setUser(null);
-                }
-              }} />
-            </div>
+            {/* Spotify Connection - Only show if user signed up via email (not via Spotify OAuth) */}
+            {!signedUpViaSpotify && (
+              <div className="pt-4 border-t">
+                <SpotifyAuth onAuthChange={(auth) => {
+                  setAuthenticated(auth);
+                  if (auth && isOpen) {
+                    fetchUserProfile();
+                  } else {
+                    setUser(null);
+                  }
+                }} />
+              </div>
+            )}
+            
+            {/* Show connection status if signed up via Spotify */}
+            {signedUpViaSpotify && (
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <span className="text-sm">Spotify Connected</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Via OAuth</span>
+                </div>
+              </div>
+            )}
+
+            {/* Logout Button */}
+            {supabaseUser && (
+              <div className="pt-4 border-t">
+                <Button
+                  onClick={handleLogout}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                  disabled={isLoggingOut}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {isLoggingOut ? "Signing out..." : "Sign Out"}
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

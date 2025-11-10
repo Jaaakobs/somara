@@ -14,6 +14,21 @@ export function SpotifyReconnectAlert() {
     const checkConnection = async () => {
       setIsChecking(true);
       
+      // First check if user signed up via Spotify OAuth (they're already connected via Supabase)
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.provider_token && session.provider === 'spotify') {
+          // User signed up via Spotify OAuth - they're connected, no reconnect needed
+          setNeedsReconnect(false);
+          setIsChecking(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking Supabase Spotify auth:", error);
+      }
+      
       // Check if there's a refresh token stored
       const refreshToken = localStorage.getItem("spotify_refresh_token");
       const accessToken = localStorage.getItem("spotify_access_token");
