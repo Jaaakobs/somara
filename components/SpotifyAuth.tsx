@@ -27,7 +27,9 @@ export function SpotifyAuth({ onAuthChange }: SpotifyAuthProps) {
         const supabase = createClient();
         const { data: { session } } = await supabase.auth.getSession();
         
-        if (session?.provider_token && session.provider === 'spotify') {
+        const signedViaSpotify = session?.provider_token && 
+          session.user?.identities?.some(identity => identity.provider === 'spotify');
+        if (signedViaSpotify) {
           // Sync tokens from Supabase
           const { syncSpotifyTokensFromSupabase } = await import("@/lib/spotify-auth");
           await syncSpotifyTokensFromSupabase();

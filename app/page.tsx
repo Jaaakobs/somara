@@ -40,7 +40,9 @@ export default function Home() {
           console.log('Session user:', session.user?.email)
           
           // Sync Spotify tokens from Supabase if user signed in via Spotify OAuth
-          if (session.provider_token && session.provider === 'spotify') {
+          const signedViaSpotify = session.provider_token && 
+            session.user?.identities?.some(identity => identity.provider === 'spotify');
+          if (signedViaSpotify) {
             try {
               const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
               await syncSpotifyTokensFromSupabase()
@@ -74,7 +76,9 @@ export default function Home() {
       console.log('Auth state changed:', event, session ? 'session exists' : 'no session')
       
       // Sync Spotify tokens from Supabase if user signed in via Spotify OAuth
-      if (session?.provider_token && session.provider === 'spotify') {
+      const signedViaSpotify = session?.provider_token && 
+        session.user?.identities?.some(identity => identity.provider === 'spotify');
+      if (signedViaSpotify) {
         try {
           const { syncSpotifyTokensFromSupabase } = await import('@/lib/spotify-auth')
           await syncSpotifyTokensFromSupabase()

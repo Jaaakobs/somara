@@ -27,7 +27,9 @@ export async function syncSpotifyTokensFromSupabase(): Promise<boolean> {
     
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (!session?.provider_token || session.provider !== 'spotify') {
+    const signedViaSpotify = session?.provider_token && 
+      session.user?.identities?.some(identity => identity.provider === 'spotify');
+    if (!signedViaSpotify) {
       return false;
     }
     
@@ -156,7 +158,9 @@ export async function getStoredAccessToken(): Promise<string | null> {
       const supabase = await getSupabaseClient();
       if (supabase) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.provider_token && session.provider === 'spotify') {
+        const signedViaSpotify = session?.provider_token && 
+          session.user?.identities?.some(identity => identity.provider === 'spotify');
+        if (signedViaSpotify) {
           return session.provider_token;
         }
       }
@@ -181,7 +185,9 @@ export async function getStoredAccessToken(): Promise<string | null> {
       const supabase = await getSupabaseClient();
       if (supabase) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.provider_token && session.provider === 'spotify') {
+        const signedViaSpotify = session?.provider_token && 
+          session.user?.identities?.some(identity => identity.provider === 'spotify');
+        if (signedViaSpotify) {
           // Sync the token to localStorage
           await syncSpotifyTokensFromSupabase();
           return session.provider_token;
@@ -230,7 +236,9 @@ export async function isAuthenticated(): Promise<boolean> {
       const supabase = await getSupabaseClient();
       if (supabase) {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.provider_token && session.provider === 'spotify') {
+        const signedViaSpotify = session?.provider_token && 
+          session.user?.identities?.some(identity => identity.provider === 'spotify');
+        if (signedViaSpotify) {
           // Sync to localStorage
           await syncSpotifyTokensFromSupabase();
           return true;

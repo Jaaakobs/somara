@@ -89,8 +89,9 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
         setSupabaseUser(session.user);
         
         // Check if user signed up via Spotify OAuth
-        const signedViaSpotify = session.provider === 'spotify' && session.provider_token;
-        setSignedUpViaSpotify(signedViaSpotify);
+        const signedViaSpotify = session.provider_token && 
+          session.user?.identities?.some(identity => identity.provider === 'spotify');
+        setSignedUpViaSpotify(!!signedViaSpotify);
         
         // If user signed in via Spotify OAuth, sync tokens and fetch Spotify profile
         if (signedViaSpotify) {
