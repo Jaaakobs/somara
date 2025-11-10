@@ -169,7 +169,7 @@ export function UserProfile({ onClose }: UserProfileProps = {}) {
         onClose();
       }
       
-      // Redirect to landing page
+      // Redirect to landing page (user signed out)
       router.push('/');
       router.refresh();
     } catch (err) {

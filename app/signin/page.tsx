@@ -53,7 +53,7 @@ export default function SignInPage() {
         
         if (session) {
           // User is already authenticated, redirect to app
-          router.push("/");
+          router.push("/home");
           router.refresh();
         } else {
           setIsCheckingAuth(false);
@@ -63,6 +63,15 @@ export default function SignInPage() {
         setIsCheckingAuth(false);
       }
     };
+
+    // Check for error in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
     checkAuth();
   }, [router]);
@@ -125,7 +134,7 @@ export default function SignInPage() {
           // Check if email confirmation is required
           if (data.session) {
             // User is immediately signed in (email confirmation disabled)
-            router.push("/");
+            router.push("/home");
             router.refresh();
           } else {
             // Email confirmation required
@@ -149,7 +158,7 @@ export default function SignInPage() {
         }
 
         if (data.session) {
-          router.push("/");
+          router.push("/home");
           router.refresh();
         }
       }
@@ -165,29 +174,36 @@ export default function SignInPage() {
 
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/auth/callback`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=/home`;
+
+      console.log('Initiating Spotify OAuth with redirectTo:', redirectTo);
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
-        provider: "spotify",
+        provider: 'spotify',
         options: {
           redirectTo,
-          scopes: "playlist-read-private playlist-read-collaborative user-read-private user-read-email streaming user-read-playback-state user-modify-playback-state",
         },
       });
 
       if (oauthError) {
+        console.error('Spotify OAuth error:', oauthError);
         setError(`Failed to sign in with Spotify: ${oauthError.message}`);
         setIsLoading(false);
         return;
       }
 
       if (data?.url) {
+        console.log('Redirecting to Spotify:', data.url);
+        // Redirect to Spotify OAuth page
         window.location.href = data.url;
+        // Don't set loading to false - we're redirecting
       } else {
-        setError("No OAuth URL received from Supabase");
+        console.error('No OAuth URL received from Supabase');
+        setError("No OAuth URL received from Supabase. Please check your Spotify configuration in Supabase Dashboard.");
         setIsLoading(false);
       }
     } catch (err) {
+      console.error('Exception during Spotify OAuth:', err);
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
       setIsLoading(false);
     }

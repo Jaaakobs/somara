@@ -165,7 +165,7 @@ export async function getStoredAccessToken(): Promise<string | null> {
         const signedViaSpotify = session?.provider_token && 
           session.user?.identities?.some(identity => identity.provider === 'spotify');
         if (signedViaSpotify && session.provider_token) {
-          return session.provider_token;
+          return session.provider_token as string;
         }
       }
     } catch (error) {
@@ -191,7 +191,7 @@ export async function getStoredAccessToken(): Promise<string | null> {
         const { data: { session } } = await supabase.auth.getSession();
         const signedViaSpotify = session?.provider_token && 
           session.user?.identities?.some(identity => identity.provider === 'spotify');
-        if (signedViaSpotify && session.provider_token) {
+        if (signedViaSpotify) {
           // Sync the token to localStorage
           await syncSpotifyTokensFromSupabase();
           return session.provider_token;

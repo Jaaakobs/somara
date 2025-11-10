@@ -8,22 +8,12 @@ export async function createClient() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Missing Supabase environment variables')
-    console.error('URL:', supabaseUrl ? 'set' : 'missing')
-    console.error('Key:', supabaseAnonKey ? 'set' : 'missing')
     throw new Error('Missing Supabase environment variables. Please check your .env.local file and restart your dev server.')
   }
 
-  // Trim whitespace from the anon key
-  const trimmedAnonKey = supabaseAnonKey.trim()
-
-  console.log('Creating Supabase server client')
-  console.log('URL:', supabaseUrl)
-  console.log('Anon Key length:', trimmedAnonKey.length)
-
   return createServerClient(
-    supabaseUrl.trim(),
-    trimmedAnonKey,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
